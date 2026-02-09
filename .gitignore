@@ -1,0 +1,27 @@
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# MCP client config (contains API tokens)
+.cursor/
+
+# Secrets / tokens — never commit these
+*.token
+*.secret
+config.yaml
+
+# Build artifacts
+*.tsbuildinfo
+
+# User-specific launcher
+run-server.sh
