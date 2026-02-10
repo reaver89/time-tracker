@@ -27,6 +27,14 @@ export interface WorklogPayload {
   startTime: string;       // HH:MM:SS
   authorAccountId: string;
   description?: string;
+  attributes?: Record<string, { value: string }>;
+}
+
+export interface AccountLink {
+  id: number;
+  accountKey: string;
+  accountId: number;
+  isDefault: boolean;
 }
 
 export interface WorklogResult {
@@ -87,6 +95,9 @@ export class TempoClient {
     if (payload.description) {
       body.description = payload.description;
     }
+    if (payload.attributes && Object.keys(payload.attributes).length > 0) {
+      body.attributes = payload.attributes;
+    }
 
     const data = await this.request<{
       tempoWorklogId: number;
@@ -103,6 +114,38 @@ export class TempoClient {
       startDate: data.startDate,
       description: data.description ?? "",
     };
+  }
+
+  /**
+   * Retrieve account links for a Jira project.
+   * Returns the default account link if one exists.
+   */
+  async getDefaultAccountForProject(projectId: number): Promise<AccountLink | null> {
+    try {
+      const data = await this.request<{
+        results: Array<{
+          id: number;
+          scope: { id: number; type: string };
+          account: { id: number; key: string };
+          default: boolean;
+        }>;
+      }>("GET", `account-links/project/${projectId}`, undefined, { limit: "100" });
+
+      const links = data.results || [];
+
+      // Find the default link first, otherwise return the first one
+      const defaultLink = links.find((l) => l.default) ?? links[0];
+      if (!defaultLink) return null;
+
+      return {
+        id: defaultLink.id,
+        accountKey: defaultLink.account?.key ?? "",
+        accountId: defaultLink.account?.id ?? 0,
+        isDefault: defaultLink.default ?? false,
+      };
+    } catch {
+      return null;
+    }
   }
 
   /** Retrieve all Tempo teams. */

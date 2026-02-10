@@ -42,9 +42,19 @@ export function registerLogTimeTool(server: McpServer): void {
         const key = issue_key.toUpperCase();
 
         const jira = new JiraClient(config.jira_base_url, config.jira_email, config.jira_api_token);
-        const issueId = await jira.getIssueId(key);
+        const { issueId, projectId } = await jira.getIssueId(key);
 
         const tempo = new TempoClient(config.tempo_api_token);
+
+        // Resolve default Tempo account for the project (required work attribute)
+        const attributes: Record<string, { value: string }> = {};
+        if (projectId) {
+          const accountLink = await tempo.getDefaultAccountForProject(projectId);
+          if (accountLink) {
+            attributes["_CSMProject_"] = { value: accountLink.accountKey };
+          }
+        }
+
         const result = await tempo.createWorklog({
           issueId,
           issueKey: key,
@@ -53,6 +63,7 @@ export function registerLogTimeTool(server: McpServer): void {
           startTime: "09:00:00",
           authorAccountId: config.jira_account_id,
           description,
+          attributes,
         });
 
         return {

@@ -51,7 +51,16 @@ export function registerBulkLogTimeTool(server: McpServer): void {
             const seconds = parseDuration(entry.duration);
             const startDate = entry.date ?? defaultDate;
             const key = entry.issue_key.toUpperCase();
-            const issueId = await jira.getIssueId(key);
+            const { issueId, projectId } = await jira.getIssueId(key);
+
+            // Resolve default Tempo account for the project (required work attribute)
+            const attributes: Record<string, { value: string }> = {};
+            if (projectId) {
+              const accountLink = await tempo.getDefaultAccountForProject(projectId);
+              if (accountLink) {
+                attributes["_CSMProject_"] = { value: accountLink.accountKey };
+              }
+            }
 
             const result = await tempo.createWorklog({
               issueId,
@@ -61,6 +70,7 @@ export function registerBulkLogTimeTool(server: McpServer): void {
               startTime: "09:00:00",
               authorAccountId: config.jira_account_id,
               description: entry.description,
+              attributes,
             });
 
             results.push(
