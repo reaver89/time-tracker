@@ -41,8 +41,16 @@ export interface WorklogResult {
   tempoWorklogId: number;
   issueKey: string;
   timeSpentSeconds: number;
+  billableSeconds: number;
   startDate: string;
   description: string;
+  authorAccountId?: string;
+}
+
+export interface UserScheduleDay {
+  date: string;
+  requiredSeconds: number;
+  type: string;
 }
 
 export interface PlanResult {
@@ -115,6 +123,7 @@ export class TempoClient {
       tempoWorklogId: number;
       issue: { key: string };
       timeSpentSeconds: number;
+      billableSeconds?: number;
       startDate: string;
       description?: string;
     }>("POST", "worklogs", body);
@@ -123,6 +132,7 @@ export class TempoClient {
       tempoWorklogId: data.tempoWorklogId,
       issueKey: data.issue?.key ?? payload.issueKey,
       timeSpentSeconds: data.timeSpentSeconds,
+      billableSeconds: data.billableSeconds ?? 0,
       startDate: data.startDate,
       description: data.description ?? "",
     };
@@ -211,7 +221,10 @@ export class TempoClient {
     }));
   }
 
-  /** Retrieve worklogs for a user within a date range. */
+  /**
+   * Retrieve worklogs for a user within a date range.
+   * Automatically follows pagination (metadata.next) to fetch all results.
+   */
   async getWorklogs(
     fromDate: Date,
     toDate: Date,
@@ -221,28 +234,47 @@ export class TempoClient {
     const params: Record<string, string> = {
       from: formatDate(fromDate),
       to: formatDate(toDate),
+      offset: "0",
       limit: String(limit),
     };
 
-    const path = accountId ? `worklogs/user/${accountId}` : "worklogs";
+    const basePath = accountId ? `worklogs/user/${accountId}` : "worklogs";
+    const allResults: WorklogResult[] = [];
 
-    const data = await this.request<{
-      results: Array<{
-        tempoWorklogId: number;
-        issue: { key: string };
-        timeSpentSeconds: number;
-        startDate: string;
-        description?: string;
-      }>;
-    }>("GET", path, undefined, params);
+    // First page
+    let data = await this.request<{
+      results: RawWorklog[];
+      metadata?: { next?: string; count?: number };
+    }>("GET", basePath, undefined, params);
 
-    return (data.results || []).map((item) => ({
+    allResults.push(...(data.results || []).map((item) => this.mapWorklog(item, accountId)));
+
+    // Follow pagination
+    while (data.metadata?.next) {
+      const resp = await fetch(data.metadata.next, {
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          Accept: "application/json",
+        },
+      });
+      if (!resp.ok) break;
+      data = await resp.json() as typeof data;
+      allResults.push(...(data.results || []).map((item) => this.mapWorklog(item, accountId)));
+    }
+
+    return allResults;
+  }
+
+  private mapWorklog(item: RawWorklog, fallbackAccountId?: string): WorklogResult {
+    return {
       tempoWorklogId: item.tempoWorklogId,
       issueKey: item.issue?.key ?? "",
       timeSpentSeconds: item.timeSpentSeconds,
+      billableSeconds: item.billableSeconds ?? 0,
       startDate: item.startDate,
       description: item.description ?? "",
-    }));
+      authorAccountId: item.author?.accountId ?? fallbackAccountId,
+    };
   }
 
   // ─── Plans (Resource Allocations) ───────────────────────────────
@@ -282,6 +314,72 @@ export class TempoClient {
     return (data.results || []).map((p) => this.mapPlan(p));
   }
 
+  /**
+   * Search worklogs using POST /4/worklogs/search.
+   * Supports filtering by multiple worker account IDs, date range, etc.
+   */
+  async searchWorklogs(
+    from: string,
+    to: string,
+    workerAccountIds: string[],
+    limit = 5000
+  ): Promise<WorklogResult[]> {
+    const body: Record<string, unknown> = {
+      from,
+      to,
+      limit,
+    };
+    if (workerAccountIds.length > 0) {
+      body.authorIds = workerAccountIds;
+    }
+
+    const data = await this.request<{
+      results: Array<{
+        tempoWorklogId: number;
+        issue: { key: string };
+        timeSpentSeconds: number;
+        billableSeconds?: number;
+        startDate: string;
+        description?: string;
+        author: { accountId: string };
+      }>;
+    }>("POST", "worklogs/search", body);
+
+    return (data.results || []).map((item) => ({
+      tempoWorklogId: item.tempoWorklogId,
+      issueKey: item.issue?.key ?? "",
+      timeSpentSeconds: item.timeSpentSeconds,
+      billableSeconds: item.billableSeconds ?? 0,
+      startDate: item.startDate,
+      description: item.description ?? "",
+      authorAccountId: item.author?.accountId,
+    }));
+  }
+
+  /**
+   * Retrieve user schedule (required hours) for a date range.
+   * Uses GET /4/user-schedule/{accountId}?from=...&to=...
+   */
+  async getUserSchedule(
+    accountId: string,
+    from: string,
+    to: string
+  ): Promise<UserScheduleDay[]> {
+    const data = await this.request<{
+      results: Array<{
+        date: string;
+        requiredSeconds: number;
+        type: string;
+      }>;
+    }>("GET", `user-schedule/${accountId}`, undefined, { from, to });
+
+    return (data.results || []).map((d) => ({
+      date: d.date,
+      requiredSeconds: d.requiredSeconds,
+      type: d.type ?? "WORKING_DAY",
+    }));
+  }
+
   /** Search plans with optional filters. */
   async getPlans(
     from: string,
@@ -314,6 +412,17 @@ export class TempoClient {
 
     return (data.results || []).map((p) => this.mapPlan(p));
   }
+}
+
+/** Raw worklog shape from the Tempo API. */
+interface RawWorklog {
+  tempoWorklogId: number;
+  issue?: { key?: string };
+  timeSpentSeconds: number;
+  billableSeconds?: number;
+  startDate: string;
+  description?: string;
+  author?: { accountId?: string };
 }
 
 /** Raw plan shape from the Tempo API. */

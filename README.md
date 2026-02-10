@@ -13,6 +13,8 @@ Instead of typing CLI commands, you ask the agent naturally — "Log 2 hours to 
 | `list_issues` | List Jira issues (assigned, recent, or by project) |
 | `time_summary` | View logged time with daily totals (today, this week, or custom range) |
 | `team_worklogs` | Show worklogs for your subordinates (Tempo teams you lead) |
+| `plans` | View resource allocation plans from Tempo Capacity Planner |
+| `team_report` | Multi-user timesheet report with logged vs required hours |
 
 ## Setup
 
@@ -100,6 +102,8 @@ Once configured, just talk to the agent:
 - **"Show my assigned Jira issues"** — calls `list_issues`
 - **"Show my time summary for this week"** — calls `time_summary`
 - **"Show my team's worklogs for last week"** — calls `team_worklogs`
+- **"Show timesheet report for Vladimir Makhnevich for last month"** — calls `team_report`
+- **"Generate a report for these account IDs for February"** — calls `team_report`
 
 ## Project Structure
 
@@ -116,6 +120,8 @@ src/
     list-issues.ts     "list_issues" tool
     summary.ts         "time_summary" tool
     team-worklogs.ts   "team_worklogs" tool
+    plans.ts           "plans" tool
+    team-report.ts     "team_report" tool
 ```
 
 ## Tech Stack

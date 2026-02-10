@@ -149,4 +149,20 @@ export class JiraClient {
       maxResults
     );
   }
+
+  /**
+   * Search for Jira users by display name.
+   * Returns matching users with their accountId and displayName.
+   */
+  async searchUsers(query: string, maxResults = 10): Promise<JiraUser[]> {
+    const data = await this.request<
+      Array<{ accountId: string; displayName: string; emailAddress?: string }>
+    >("user/search", { query, maxResults: String(maxResults) });
+
+    return (data || []).map((u) => ({
+      accountId: u.accountId,
+      displayName: u.displayName,
+      emailAddress: u.emailAddress,
+    }));
+  }
 }
