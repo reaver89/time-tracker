@@ -54,11 +54,11 @@ export function registerBulkLogTimeTool(server: McpServer): void {
             const { issueId, projectId } = await jira.getIssueId(key);
 
             // Resolve default Tempo account for the project (required work attribute)
-            const attributes: Record<string, { value: string }> = {};
+            const attributes: Array<{ key: string; value: string }> = [];
             if (projectId) {
               const accountLink = await tempo.getDefaultAccountForProject(projectId);
               if (accountLink) {
-                attributes["_CSMProject_"] = { value: accountLink.accountKey };
+                attributes.push({ key: "_CSMProject_", value: accountLink.accountKey });
               }
             }
 

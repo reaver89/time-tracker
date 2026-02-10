@@ -27,7 +27,7 @@ export interface WorklogPayload {
   startTime: string;       // HH:MM:SS
   authorAccountId: string;
   description?: string;
-  attributes?: Record<string, { value: string }>;
+  attributes?: Array<{ key: string; value: string }>;
 }
 
 export interface AccountLink {
@@ -95,7 +95,7 @@ export class TempoClient {
     if (payload.description) {
       body.description = payload.description;
     }
-    if (payload.attributes && Object.keys(payload.attributes).length > 0) {
+    if (payload.attributes && payload.attributes.length > 0) {
       body.attributes = payload.attributes;
     }
 
