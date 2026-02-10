@@ -73,7 +73,7 @@ export class JiraClient {
           assignee?: { displayName?: string };
         };
       }>;
-    }>("search", {
+    }>("search/jql", {
       jql,
       maxResults: String(maxResults),
       fields: "summary,status,project,issuetype,assignee",
