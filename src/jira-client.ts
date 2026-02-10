@@ -110,6 +110,14 @@ export class JiraClient {
     return this.request<JiraUser>("user", { accountId });
   }
 
+  /** Resolve a Jira issue key (e.g. "PROJ-123") to its numeric issue ID. */
+  async getIssueId(issueKey: string): Promise<number> {
+    const data = await this.request<{ id: string }>(`issue/${issueKey}`, {
+      fields: "",
+    });
+    return Number(data.id);
+  }
+
   /** Recently updated issues assigned to the current user. */
   async recentIssues(maxResults = 20): Promise<JiraIssue[]> {
     return this.searchIssues(

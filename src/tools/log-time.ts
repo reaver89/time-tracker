@@ -5,6 +5,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getConfig } from "../config.js";
+import { JiraClient } from "../jira-client.js";
 import { TempoClient } from "../tempo-client.js";
 import { parseDuration, formatSeconds, today } from "../utils.js";
 
@@ -38,10 +39,15 @@ export function registerLogTimeTool(server: McpServer): void {
         const config = getConfig();
         const seconds = parseDuration(duration);
         const startDate = date ?? today();
+        const key = issue_key.toUpperCase();
+
+        const jira = new JiraClient(config.jira_base_url, config.jira_email, config.jira_api_token);
+        const issueId = await jira.getIssueId(key);
 
         const tempo = new TempoClient(config.tempo_api_token);
         const result = await tempo.createWorklog({
-          issueKey: issue_key.toUpperCase(),
+          issueId,
+          issueKey: key,
           timeSpentSeconds: seconds,
           startDate,
           startTime: "09:00:00",

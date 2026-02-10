@@ -5,6 +5,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getConfig } from "../config.js";
+import { JiraClient } from "../jira-client.js";
 import { TempoClient } from "../tempo-client.js";
 import { parseDuration, formatSeconds, today } from "../utils.js";
 
@@ -37,6 +38,7 @@ export function registerBulkLogTimeTool(server: McpServer): void {
     async ({ entries }) => {
       try {
         const config = getConfig();
+        const jira = new JiraClient(config.jira_base_url, config.jira_email, config.jira_api_token);
         const tempo = new TempoClient(config.tempo_api_token);
         const defaultDate = today();
 
@@ -48,9 +50,12 @@ export function registerBulkLogTimeTool(server: McpServer): void {
           try {
             const seconds = parseDuration(entry.duration);
             const startDate = entry.date ?? defaultDate;
+            const key = entry.issue_key.toUpperCase();
+            const issueId = await jira.getIssueId(key);
 
             const result = await tempo.createWorklog({
-              issueKey: entry.issue_key.toUpperCase(),
+              issueId,
+              issueKey: key,
               timeSpentSeconds: seconds,
               startDate,
               startTime: "09:00:00",

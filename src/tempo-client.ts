@@ -20,10 +20,11 @@ export interface TempoTeamMember {
 }
 
 export interface WorklogPayload {
-  issueKey: string;
+  issueId: number;
+  issueKey?: string;       // kept for display purposes only
   timeSpentSeconds: number;
-  startDate: string;      // YYYY-MM-DD
-  startTime: string;      // HH:MM:SS
+  startDate: string;       // YYYY-MM-DD
+  startTime: string;       // HH:MM:SS
   authorAccountId: string;
   description?: string;
 }
@@ -77,7 +78,7 @@ export class TempoClient {
   /** Create a single worklog entry. */
   async createWorklog(payload: WorklogPayload): Promise<WorklogResult> {
     const body: Record<string, unknown> = {
-      issueKey: payload.issueKey,
+      issueId: payload.issueId,
       timeSpentSeconds: payload.timeSpentSeconds,
       startDate: payload.startDate,
       startTime: payload.startTime,
