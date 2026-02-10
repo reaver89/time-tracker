@@ -19,6 +19,7 @@ import { registerListIssuesTool } from "./tools/list-issues.js";
 import { registerTimeSummaryTool } from "./tools/summary.js";
 import { registerTeamWorklogsTool } from "./tools/team-worklogs.js";
 import { registerPlansTool } from "./tools/plans.js";
+import { registerTeamReportTool } from "./tools/team-report.js";
 
 // Auto-fetch Jira account ID at startup
 const baseUrl = process.env.JIRA_BASE_URL;
@@ -52,6 +53,7 @@ registerListIssuesTool(server);
 registerTimeSummaryTool(server);
 registerTeamWorklogsTool(server);
 registerPlansTool(server);
+registerTeamReportTool(server);
 
 // Connect via stdio transport (used by Cursor and other MCP clients)
 const transport = new StdioServerTransport();
