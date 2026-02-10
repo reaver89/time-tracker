@@ -124,6 +124,24 @@ export class JiraClient {
     };
   }
 
+  /** Resolve a numeric issue ID to its key and summary. */
+  async getIssueById(issueId: string | number): Promise<{ key: string; summary: string }> {
+    const data = await this.request<{
+      key: string;
+      fields: { summary?: string };
+    }>(`issue/${issueId}`, { fields: "summary" });
+    return { key: data.key, summary: data.fields?.summary ?? "" };
+  }
+
+  /** Resolve a numeric project ID to its key and name. */
+  async getProjectById(projectId: string | number): Promise<{ key: string; name: string }> {
+    const data = await this.request<{
+      key: string;
+      name: string;
+    }>(`project/${projectId}`);
+    return { key: data.key, name: data.name ?? "" };
+  }
+
   /** Recently updated issues assigned to the current user. */
   async recentIssues(maxResults = 20): Promise<JiraIssue[]> {
     return this.searchIssues(

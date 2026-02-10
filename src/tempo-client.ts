@@ -45,6 +45,18 @@ export interface WorklogResult {
   description: string;
 }
 
+export interface PlanResult {
+  id: number;
+  startDate: string;
+  endDate: string;
+  plannedSecondsPerDay: number;
+  totalPlannedSeconds: number;
+  totalPlannedSecondsInScope: number;
+  description: string;
+  assignee: { id: string; type: string };
+  planItem: { id: string; type: string }; // ISSUE or PROJECT
+}
+
 export class TempoClient {
   private token: string;
 
@@ -232,4 +244,87 @@ export class TempoClient {
       description: item.description ?? "",
     }));
   }
+
+  // ─── Plans (Resource Allocations) ───────────────────────────────
+
+  private mapPlan(raw: RawPlan): PlanResult {
+    return {
+      id: raw.id,
+      startDate: raw.startDate ?? "",
+      endDate: raw.endDate ?? "",
+      plannedSecondsPerDay: raw.plannedSecondsPerDay ?? 0,
+      totalPlannedSeconds: raw.totalPlannedSeconds ?? 0,
+      totalPlannedSecondsInScope: raw.totalPlannedSecondsInScope ?? 0,
+      description: raw.description ?? "",
+      assignee: {
+        id: raw.assignee?.id ?? "",
+        type: raw.assignee?.type ?? "USER",
+      },
+      planItem: {
+        id: raw.planItem?.id ?? "",
+        type: raw.planItem?.type ?? "ISSUE",
+      },
+    };
+  }
+
+  /** Retrieve plans (resource allocations) for a specific user. */
+  async getPlansForUser(
+    accountId: string,
+    from: string,
+    to: string
+  ): Promise<PlanResult[]> {
+    const data = await this.request<{ results: RawPlan[] }>(
+      "GET",
+      `plans/user/${accountId}`,
+      undefined,
+      { from, to, plannedTimeBreakdown: "DAILY" }
+    );
+    return (data.results || []).map((p) => this.mapPlan(p));
+  }
+
+  /** Search plans with optional filters. */
+  async getPlans(
+    from: string,
+    to: string,
+    opts?: {
+      accountIds?: string[];
+      projectIds?: number[];
+      issueIds?: number[];
+    }
+  ): Promise<PlanResult[]> {
+    const params: Record<string, string> = {
+      from,
+      to,
+      limit: "5000",
+      plannedTimeBreakdown: "DAILY",
+    };
+    if (opts?.accountIds?.length) {
+      params.accountIds = opts.accountIds.join(",");
+    }
+    if (opts?.projectIds?.length) {
+      params.projectIds = opts.projectIds.join(",");
+    }
+    if (opts?.issueIds?.length) {
+      params.issueIds = opts.issueIds.join(",");
+    }
+
+    const data = await this.request<{
+      results: RawPlan[];
+    }>("GET", "plans", undefined, params);
+
+    return (data.results || []).map((p) => this.mapPlan(p));
+  }
+}
+
+/** Raw plan shape from the Tempo API. */
+interface RawPlan {
+  id: number;
+  startDate?: string;
+  endDate?: string;
+  plannedSecondsPerDay?: number;
+  totalPlannedSeconds?: number;
+  totalPlannedSecondsInScope?: number;
+  description?: string;
+  assignee?: { id?: string; type?: string };
+  planItem?: { id?: string; type?: string; self?: string };
 }

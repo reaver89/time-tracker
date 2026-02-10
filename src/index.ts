@@ -3,7 +3,7 @@
  *
  * Entry point: creates an MCP server with stdio transport and
  * registers all tools (log_time, bulk_log_time, list_issues,
- * time_summary, team_worklogs).
+ * time_summary, team_worklogs, plans).
  *
  * Credentials are read from environment variables. The Jira account ID
  * is auto-fetched at startup by calling GET /rest/api/3/myself.
@@ -18,6 +18,7 @@ import { registerBulkLogTimeTool } from "./tools/bulk-log.js";
 import { registerListIssuesTool } from "./tools/list-issues.js";
 import { registerTimeSummaryTool } from "./tools/summary.js";
 import { registerTeamWorklogsTool } from "./tools/team-worklogs.js";
+import { registerPlansTool } from "./tools/plans.js";
 
 // Auto-fetch Jira account ID at startup
 const baseUrl = process.env.JIRA_BASE_URL;
@@ -50,6 +51,7 @@ registerBulkLogTimeTool(server);
 registerListIssuesTool(server);
 registerTimeSummaryTool(server);
 registerTeamWorklogsTool(server);
+registerPlansTool(server);
 
 // Connect via stdio transport (used by Cursor and other MCP clients)
 const transport = new StdioServerTransport();
