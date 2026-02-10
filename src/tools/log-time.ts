@@ -28,13 +28,17 @@ export function registerLogTimeTool(server: McpServer): void {
           .string()
           .optional()
           .describe("Date for the worklog in ISO format (YYYY-MM-DD). Defaults to today."),
+        start_time: z
+          .string()
+          .optional()
+          .describe('Start time in HH:MM or HH:MM:SS format, e.g. "09:00", "14:30". Defaults to "09:00:00".'),
         description: z
           .string()
           .optional()
           .describe("Optional description / comment for the worklog."),
       },
     },
-    async ({ issue_key, duration, date, description }) => {
+    async ({ issue_key, duration, date, start_time, description }) => {
       try {
         const config = getConfig();
         const seconds = parseDuration(duration);
@@ -55,12 +59,20 @@ export function registerLogTimeTool(server: McpServer): void {
           }
         }
 
+        // Normalize start_time to HH:MM:SS
+        let startTime = "09:00:00";
+        if (start_time) {
+          startTime = start_time.includes(":") && start_time.split(":").length === 2
+            ? `${start_time}:00`
+            : start_time;
+        }
+
         const result = await tempo.createWorklog({
           issueId,
           issueKey: key,
           timeSpentSeconds: seconds,
           startDate,
-          startTime: "09:00:00",
+          startTime,
           authorAccountId: config.jira_account_id,
           description,
           attributes,
