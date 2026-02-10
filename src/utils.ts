@@ -58,7 +58,7 @@ export function today(): string {
 }
 
 /**
- * Return [monday, friday] of the week containing the given date.
+ * Return [monday, sunday] of the week containing the given date.
  * If no date is given, uses today.
  */
 export function getWeekBounds(ref?: Date): [Date, Date] {
@@ -69,17 +69,17 @@ export function getWeekBounds(ref?: Date): [Date, Date] {
   const monday = new Date(d);
   monday.setDate(d.getDate() + diffToMonday);
 
-  const friday = new Date(monday);
-  friday.setDate(monday.getDate() + 4);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
 
-  return [monday, friday];
+  return [monday, sunday];
 }
 
-/** Return an array of dates from monday to friday (inclusive). */
-export function weekdayRange(monday: Date, friday: Date): Date[] {
+/** Return an array of dates from start to end (inclusive). */
+export function weekdayRange(start: Date, end: Date): Date[] {
   const days: Date[] = [];
-  const current = new Date(monday);
-  while (current <= friday) {
+  const current = new Date(start);
+  while (current <= end) {
     days.push(new Date(current));
     current.setDate(current.getDate() + 1);
   }
