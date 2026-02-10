@@ -117,8 +117,9 @@ export class TempoClient {
   }
 
   /**
-   * Retrieve account links for a Jira project.
-   * Returns the default account link if one exists.
+   * Retrieve the default Tempo account linked to a Jira project.
+   * The account-links endpoint only returns account.self (a URL),
+   * so we extract the account ID and fetch the full account to get its key.
    */
   async getDefaultAccountForProject(projectId: number): Promise<AccountLink | null> {
     try {
@@ -126,22 +127,40 @@ export class TempoClient {
         results: Array<{
           id: number;
           scope: { id: number; type: string };
-          account: { id: number; key: string };
+          account: { self: string; id?: number; key?: string };
           default: boolean;
         }>;
       }>("GET", `account-links/project/${projectId}`, undefined, { limit: "100" });
 
       const links = data.results || [];
+      if (links.length === 0) return null;
 
       // Find the default link first, otherwise return the first one
-      const defaultLink = links.find((l) => l.default) ?? links[0];
-      if (!defaultLink) return null;
+      const link = links.find((l) => l.default) ?? links[0];
+
+      // Extract account ID from self URL (e.g. ".../4/accounts/248" -> 248)
+      let accountId = link.account?.id ?? 0;
+      if (!accountId && link.account?.self) {
+        const match = link.account.self.match(/\/accounts\/(\d+)/);
+        if (match) accountId = Number(match[1]);
+      }
+
+      if (!accountId) return null;
+
+      // Fetch the full account to get its key
+      let accountKey = link.account?.key ?? "";
+      if (!accountKey) {
+        const account = await this.request<{ id: number; key: string }>(
+          "GET", `accounts/${accountId}`
+        );
+        accountKey = account.key;
+      }
 
       return {
-        id: defaultLink.id,
-        accountKey: defaultLink.account?.key ?? "",
-        accountId: defaultLink.account?.id ?? 0,
-        isDefault: defaultLink.default ?? false,
+        id: link.id,
+        accountKey,
+        accountId,
+        isDefault: link.default ?? false,
       };
     } catch {
       return null;
